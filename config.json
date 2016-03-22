@@ -3,6 +3,7 @@
 	"password": "password",
 	"host":     "127.0.0.1",
 	"port":      3306,
-	"database": "league_of_legends"
+	"database": "league_of_legends",
+	"table":    "daily_mmr"
 }
 
