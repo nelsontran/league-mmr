@@ -36,7 +36,6 @@ class MMRParser(html.parser.HTMLParser):
                  (1) the summoner is not currently ranked or
                  (2) the GET request failed.
 
-
         Raises:
             ValueError: A non-existent or unsupported region is passed
                 in as an argument through `region`.
