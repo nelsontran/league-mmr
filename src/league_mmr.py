@@ -8,28 +8,16 @@ the data into a MySQL database.
 
 import datetime
 import csv
-import json
 import logging
 import time
-import urllib.request
 import mysql.connector
+import urllib.error
 
+from wrapper import LeagueWrapper
 from database import LeagueDatabase
 
 __author__ = "Nelson Tran"
 __email__ = "nelson@nelsontran.com"
-
-LEAGUE_REGIONS = [
-    "kr",   # Korea
-    "euw",  # Europe West
-    "oce",  # Oceania
-    "las",  # Latin America South
-    "ru",   # Russia
-    "na",   # North America
-    "eune", # Europe Nordic & East
-    "br",   # Brazil
-    "lan",  # Latin America North
-    "tr"]   # Turkey
 
 FORMAT = "%(asctime)s %(message)s"
 logging.basicConfig(format=FORMAT)
@@ -44,15 +32,19 @@ def main():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    logger.info("Connecting to the SQL database")
-    # load MySQL database configuration from file
+    # load configuration from file
+    logger.info("Loading configuration from file")
     try:
-        database = LeagueDatabase("config.json")
+        database = LeagueDatabase("config/config.json")
+        wrapper = LeagueWrapper("config/config.json")
     except ValueError:
         logger.error("Invalid JSON configuration file")
+        logger.error("SHUT DOWN!")
+        quit()
 
     # attempt to connect to the MySQL database;
     # retry connection if attempt fails
+    logger.info("Connecting to the SQL database")
     for _ in range(5):
         try:
             database.connect()
@@ -69,7 +61,7 @@ def main():
         quit()
 
     # open list of summoners and find MMRs
-    with open("summoners.csv") as summoner_list:
+    with open("config/summoners.csv") as summoner_list:
 
         reader = csv.reader(summoner_list)
         new_rows = 0
@@ -80,10 +72,19 @@ def main():
             if len(row) != 2:
                 continue
 
-            # get MMR data: (summoner, region, mmr, date)
+            # refresh OP.GG data
+            try:
+                wrapper.refresh_summoner(row[0], row[1])
+                time.sleep(2)
+            except LookupError:
+                logger.warning("Cannot refresh summoner: summoner ID not found for " + row[0].strip())
+            except urllib.error.HTTPError:
+                logger.warning("Cannot refresh summoner: problem with specified API key") 
+
+            # get MMR data
             summoner = row[0].strip()
             region = row[1].strip()
-            mmr = get_mmr(summoner, region)
+            mmr = wrapper.get_mmr(summoner, region)
             date = str(datetime.date(1, 1, 1).today())
 
             # record MMR data into SQL database
@@ -100,48 +101,6 @@ def main():
 
     logger.info("%d new MMR entries have been added\n", new_rows)
     database.close()
-
-def get_mmr(summoner, region):
-    """
-    Get the MMR of a summoner in a region by sending a GET request
-    to op.gg and parsing the <text/json> response.
-
-    Args:
-        summoner (str): The name of the summoner.
-        region (str): The abbreviation of the server/region that the
-            summoner belongs to.
-
-    Returns:
-        int: The MMR of the summoner. This value will be 0 if
-             (1) the summoner is not currently ranked or
-             (2) the GET request failed.
-
-    Raises:
-        ValueError: A non-existent or unsupported region is passed
-            in as an argument through `region`.
-    """
-
-    # normalize arguments
-    summoner = summoner.strip().lower().replace(' ', '%20')
-    region = region.strip().lower()
-
-    if region not in LEAGUE_REGIONS:
-        raise ValueError("Region does not exist")
-
-    # construct op.gg GET request URL
-    opgg = "http://"
-    if region != "kr":
-        opgg += region + '.'
-    opgg += "op.gg/summoner/ajax/mmr.json/summonerName=" + summoner
-
-    # parse text/json response
-    response = urllib.request.urlopen(opgg).read().decode("utf-8")
-    response_dict = json.loads(response)
-
-    if "mmr" in response_dict.keys():
-        return int(response_dict["mmr"].strip().replace(',', ''))
-    else:
-        return 0
 
 if __name__ == "__main__":
     main()

@@ -57,13 +57,16 @@ class LeagueDatabase(object):
         with open(config) as json_config:
             self.sql_config = json.load(json_config)
 
-            if not set(self.sql_config.keys()) <= set(self.sql_config_attrs):
+            if not set(self.sql_config.keys()) >= set(self.sql_config_attrs):
                 raise ValueError("Invalid SQL config file")
 
         # the `table` attribute is not needed for connecting to a
         # database using the MySQL connector so we will move it out
         # of the dictionary into its own variable
         self.mmr_table = self.sql_config.pop("table")
+
+        if "apiKey" in self.sql_config:
+            self.sql_config.pop("apiKey")
 
     def add_row(self, summoner, region, mmr, date):
         """

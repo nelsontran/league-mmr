@@ -4,6 +4,7 @@
 	"host":     "127.0.0.1",
 	"port":      3306,
 	"database": "league_of_legends",
-	"table":    "daily_mmr"
+	"table":    "daily_mmr",
+	"apiKey":   "00000000-0000-0000-0000-000000000000"
 }
 
