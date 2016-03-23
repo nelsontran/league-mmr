@@ -43,7 +43,6 @@ class LeagueDatabase:
         # of the dictionary into its own variable
         self.mmr_table = self.sql_config.pop("table")
 
-
     def add_row(self, summoner, region, mmr, date):
         """
         Insert MMR data for a summoner into the MMR table in the
@@ -86,7 +85,6 @@ class LeagueDatabase:
 
         return is_success
 
-
     def connect(self):
         """
         Connect to a MySQL database using the configuration loaded in
@@ -100,7 +98,6 @@ class LeagueDatabase:
         if (not self.__table_exists()):
             self.__create_table()
 
-
     def close(self):
         """
         Close all database connection resources.
@@ -108,7 +105,6 @@ class LeagueDatabase:
 
         self.sql_cursor.close()
         self.sql_connection.close()
-
 
     def __create_table(self):
         """
@@ -129,7 +125,6 @@ class LeagueDatabase:
             "    KEY `region` (`region`),"
             "    KEY `date` (`date`)"
             ") ENGINE=InnoDB")
-
 
     def __table_exists(self):
         """
