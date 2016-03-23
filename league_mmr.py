@@ -9,7 +9,10 @@ the data into a MySQL database.
 import datetime
 import csv
 import json
+import logging
+import time
 import urllib.request
+import mysql.connector
 
 from database import LeagueDatabase
 
@@ -28,17 +31,49 @@ LEAGUE_REGIONS = [
     "lan",  # Latin America North
     "tr"]   # Turkey
 
+FORMAT = "%(asctime)s %(message)s"
+logging.basicConfig(format=FORMAT)
+
 def main():
     """
     Get the current MMR for all of the summoners listed in the
     `summoners.csv` file and store the data into a MySQL database.
     """
 
-    database = LeagueDatabase("config.json")
-    database.connect()
+    # logging configuration
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
+    logger.info("Connecting to the SQL database")
+    # load MySQL database configuration from file
+    try:
+        database = LeagueDatabase("config.json")
+    except ValueError:
+        logger.error("Invalid JSON configuration file")
+
+    # attempt to connect to the MySQL database;
+    # retry connection if attempt fails
+    for _ in range(5):
+        try:
+            database.connect()
+            break
+        except mysql.connector.Error:
+            logger.error("Failed to connect to the SQL database")
+            time.sleep(60)
+            continue
+
+    # if we cannot connect to the MySQL database at this point,
+    # terminate the script :(
+    if not database.is_connected():
+        logger.error("SHUT DOWN!")
+        quit()
+
+    # open list of summoners and find MMRs
     with open("summoners.csv") as summoner_list:
+
         reader = csv.reader(summoner_list)
+        new_rows = 0
+
         for row in reader:
 
             # ignore invalid rows
@@ -52,8 +87,18 @@ def main():
             date = str(datetime.date(1, 1, 1).today())
 
             # record MMR data into SQL database
-            database.add_row(summoner, region, mmr, date)
+            if mmr != 0:
+                success = database.add_row(summoner, region, mmr, date)
+                if success:
+                    new_rows += 1
+                else:
+                    logger.warning("Matchmaking Rating (MMR) already exists for " +
+                                   summoner + " for " + date)
+            else:
+                logger.warning("Matchmaking Rating (MMR) was not found for " +
+                               summoner + " for " + date)
 
+    logger.info("%d new MMR entries have been added\n", new_rows)
     database.close()
 
 def get_mmr(summoner, region):

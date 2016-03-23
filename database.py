@@ -26,6 +26,8 @@ class LeagueDatabase(object):
     inserting MMR data into that database.
     """
 
+    connected = False
+
     sql_config_attrs = [
         "user",
         "password",
@@ -115,6 +117,8 @@ class LeagueDatabase(object):
         self.sql_connection = mysql.connector.connect(**self.sql_config)
         self.sql_cursor = self.sql_connection.cursor()
 
+        self.connected = True
+
         if not self.__table_exists():
             self.__create_table()
 
@@ -125,6 +129,14 @@ class LeagueDatabase(object):
 
         self.sql_cursor.close()
         self.sql_connection.close()
+
+    def is_connected(self):
+        """
+        Returns True if connection to a MySQL database has been
+        established; False otherwise.
+        """
+
+        return self.connected
 
     def __create_table(self):
         """
