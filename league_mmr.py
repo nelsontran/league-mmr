@@ -1,23 +1,32 @@
 #!/usr/bin/python3
 
-from database import LeagueDatabase
+"""
+This is a script that takes all of the summoners from `summoners.csv`,
+retrieves their current Matchmaking Rankings (MMR) and stores all of
+the data into a MySQL database.
+"""
 
 import datetime
 import csv
 import json
 import urllib.request
 
-league_regions = [
-        "kr",   # Korea
-        "euw",  # Europe West
-        "oce",  # Oceania
-        "las",  # Latin America South
-        "ru",   # Russia
-        "na",   # North America
-        "eune", # Europe Nordic & East
-        "br",   # Brazil
-        "lan",  # Latin America North
-        "tr"]   # Turkey
+from database import LeagueDatabase
+
+__author__ = "Nelson Tran"
+__email__ = "nelson@nelsontran.com"
+
+LEAGUE_REGIONS = [
+    "kr",   # Korea
+    "euw",  # Europe West
+    "oce",  # Oceania
+    "las",  # Latin America South
+    "ru",   # Russia
+    "na",   # North America
+    "eune", # Europe Nordic & East
+    "br",   # Brazil
+    "lan",  # Latin America North
+    "tr"]   # Turkey
 
 def main():
     """
@@ -33,14 +42,14 @@ def main():
         for row in reader:
 
             # ignore invalid rows
-            if (len(row) != 2):
+            if len(row) != 2:
                 continue
 
             # get MMR data: (summoner, region, mmr, date)
             summoner = row[0].strip()
-            region   = row[1].strip()
-            mmr      = get_mmr(summoner, region)
-            date     = str(datetime.date(1, 1, 1).today())
+            region = row[1].strip()
+            mmr = get_mmr(summoner, region)
+            date = str(datetime.date(1, 1, 1).today())
 
             # record MMR data into SQL database
             database.add_row(summoner, region, mmr, date)
@@ -71,12 +80,12 @@ def get_mmr(summoner, region):
     summoner = summoner.strip().lower().replace(' ', '%20')
     region = region.strip().lower()
 
-    if (region not in league_regions):
+    if region not in LEAGUE_REGIONS:
         raise ValueError("Region does not exist")
 
     # construct op.gg GET request URL
     opgg = "http://"
-    if (region != "kr"):
+    if region != "kr":
         opgg += region + '.'
     opgg += "op.gg/summoner/ajax/mmr.json/summonerName=" + summoner
 
@@ -84,7 +93,7 @@ def get_mmr(summoner, region):
     response = urllib.request.urlopen(opgg).read().decode("utf-8")
     response_dict = json.loads(response)
 
-    if ("mmr" in response_dict.keys()):
+    if "mmr" in response_dict.keys():
         return int(response_dict["mmr"].strip().replace(',', ''))
     else:
         return 0

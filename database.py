@@ -1,10 +1,30 @@
 #!/usr/bin/python3
 
+"""
+This module provides an easy interface for connecting to a MySQL
+database and for inserting Matchmaking Rating (MMR) data into that
+database.
+
+Example Usage:
+    config = "/path/to/config.json"
+    database = LeagueDatabase(config)
+    database.connect()
+    database.add_row("Summoner", "NA", 1337, "2016/03/22")
+    database.close()
+"""
+
 import json
 import re
 import mysql.connector
 
-class LeagueDatabase:
+__author__ = "Nelson Tran"
+__email__ = "nelson@nelsontran.com"
+
+class LeagueDatabase(object):
+    """
+    Provides a set of methods for connecting to a MySQL database and
+    inserting MMR data into that database.
+    """
 
     sql_config_attrs = [
         "user",
@@ -17,7 +37,7 @@ class LeagueDatabase:
     sql_connection = None
     sql_cursor = None
     sql_config = {}
-    
+
     mmr_table = ""
 
     def __init__(self, config):
@@ -35,7 +55,7 @@ class LeagueDatabase:
         with open(config) as json_config:
             self.sql_config = json.load(json_config)
 
-            if (not set(self.sql_config.keys()) <= set(self.sql_config_attrs)):
+            if not set(self.sql_config.keys()) <= set(self.sql_config_attrs):
                 raise ValueError("Invalid SQL config file")
 
         # the `table` attribute is not needed for connecting to a
@@ -65,7 +85,7 @@ class LeagueDatabase:
         is_success = True
 
         date_regex_pattern = "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
-        if (not re.match(date_regex_pattern, date)):
+        if not re.match(date_regex_pattern, date):
             raise ValueError("Invalid date format, should be YYYY-MM-DD")
 
         try:
@@ -77,7 +97,7 @@ class LeagueDatabase:
             mmr_record = (summoner, region, mmr, date)
             self.sql_cursor.execute(add_mmr_record, mmr_record)
             self.sql_connection.commit()
-            
+
         except mysql.connector.errors.IntegrityError:
             # most likely due to already existing record for the date;
             # only one MMR record per day per summoner
@@ -95,7 +115,7 @@ class LeagueDatabase:
         self.sql_connection = mysql.connector.connect(**self.sql_config)
         self.sql_cursor = self.sql_connection.cursor()
 
-        if (not self.__table_exists()):
+        if not self.__table_exists():
             self.__create_table()
 
     def close(self):
@@ -136,7 +156,4 @@ class LeagueDatabase:
         self.sql_cursor.execute("SHOW TABLES LIKE '" + self.mmr_table + "'")
         results = self.sql_cursor.fetchall()
 
-        if (len(results) > 0):
-            return True
-        else:
-            return False
+        return bool(len(results))
